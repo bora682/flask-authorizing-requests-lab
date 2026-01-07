@@ -18,7 +18,17 @@ db.init_app(app)
 
 api = Api(app)
 
+article_schema = ArticleSchema()
+articles_schema = ArticleSchema(many=True)
+
 class ClearSession(Resource):
+
+    def get(self):
+        
+        session['page_views'] = None
+        session['user_id'] = None
+
+        return {}, 204
 
     def delete(self):
     
@@ -87,12 +97,23 @@ class CheckSession(Resource):
 class MemberOnlyIndex(Resource):
     
     def get(self):
-        pass
+        if not session.get('user_id'):
+            return make_response({'error': 'Unauthorized'}, 401)
+        
+        member_articles = Article.query.filter(Article.is_member_only == True).all()
+        return make_response(articles_schema.dump(member_articles), 200)
 
 class MemberOnlyArticle(Resource):
     
     def get(self, id):
-        pass
+        if not session.get('user_id'):
+            return make_response({'error': 'Unauthorized'}, 401)
+        
+        article = Article.query.filter(Article.id == id).first()
+        article_json = ArticleSchema().dump(article)
+
+        return make_response(article_json, 200)
+    
 
 api.add_resource(ClearSession, '/clear', endpoint='clear')
 api.add_resource(IndexArticle, '/articles', endpoint='article_list')
